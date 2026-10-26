@@ -1,0 +1,5 @@
+# Tests in a real Home Assistant (~1 GB):
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements_test.txt && .venv/bin/pytest
+pytest-homeassistant-custom-component
+home-assistant-frontend  # foodflow depends on the frontend integration (it loads the cards)
+ruff

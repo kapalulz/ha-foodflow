@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FoodFlow",
+        "description": "Address of the FoodFlow Kitchen page on your home network, e.g. http://192.168.1.10:9290. Home Assistant only reads it.",
+        "data": {
+          "url": "Kitchen page address"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Use the address without a path, e.g. http://192.168.1.10:9290.",
+      "cannot_connect": "Cannot reach the Kitchen page at this address.",
+      "invalid_data": "The Kitchen page answered, but without /api/ha: update FoodFlow and restart the kitchen container."
+    },
+    "abort": {
+      "already_configured": "This FoodFlow is already added."
+    }
+  }
+}

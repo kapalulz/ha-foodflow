@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-26T09:00:00-04:00",
+  "today": "2026-10-26",
+  "next": {
+    "name": "Курица с рисом",
+    "kind": "main",
+    "kind_label": "Основное блюдо",
+    "servings": 4.0,
+    "minutes": 40,
+    "kcal": 520,
+    "protein": 38,
+    "missing": [
+      "Рис"
+    ],
+    "meal": "Обед",
+    "ingredients": [
+      {
+        "name": "Курица",
+        "amount": 900.0,
+        "unit": "г",
+        "ok": true
+      },
+      {
+        "name": "Рис",
+        "amount": 300.0,
+        "unit": "г",
+        "ok": false
+      }
+    ],
+    "steps": [
+      "Обжарить 900 г курицы.",
+      "Подавать горячим."
+    ]
+  },
+  "queue": [
+    {
+      "name": "Курица с рисом",
+      "kind": "main",
+      "kind_label": "Основное блюдо",
+      "servings": 4.0,
+      "minutes": 40,
+      "kcal": 520,
+      "protein": 38,
+      "missing": [
+        "Рис"
+      ],
+      "meal": "Обед"
+    },
+    {
+      "name": "Борщ",
+      "kind": "soup",
+      "kind_label": "Суп",
+      "servings": 4.0,
+      "minutes": 40,
+      "kcal": 520,
+      "protein": 38,
+      "missing": [],
+      "meal": "Обед"
+    }
+  ],
+  "extras": [
+    {
+      "name": "Кекс",
+      "kind": "dessert",
+      "kind_label": "Десерт",
+      "servings": 4.0,
+      "minutes": 40,
+      "kcal": 520,
+      "protein": 38,
+      "missing": [],
+      "meal": "Обед"
+    }
+  ],
+  "shopping": [
+    {
+      "title": "Купить сейчас",
+      "date": null,
+      "items": [
+        {
+          "name": "Рис",
+          "label": "Курица с рисом",
+          "manual": false
+        },
+        {
+          "name": "Соль",
+          "label": "кончилось",
+          "manual": true
+        }
+      ]
+    },
+    {
+      "title": "Покупки 30.10",
+      "date": "2026-10-30",
+      "items": [
+        {
+          "name": "Сливки",
+          "label": "Борщ",
+          "manual": false
+        }
+      ]
+    }
+  ],
+  "thaw": [
+    {
+      "day": "2026-10-27",
+      "name": "Курица с рисом",
+      "items": [
+        {
+          "name": "Бёдра",
+          "amount": 900,
+          "unit": "г"
+        }
+      ]
+    }
+  ],
+  "use_up": [
+    {
+      "product": "Шпинат",
+      "amount": 200,
+      "unit": "г",
+      "best_before": "2026-10-28",
+      "recipes": [
+        "Омлет"
+      ]
+    }
+  ],
+  "receipt_questions": 1
+}

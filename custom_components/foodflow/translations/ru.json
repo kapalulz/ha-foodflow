@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "FoodFlow",
+        "description": "Адрес страницы «Кухня» FoodFlow в домашней сети, например http://192.168.1.10:9290. Home Assistant только читает данные.",
+        "data": {
+          "url": "Адрес страницы «Кухня»"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Укажите адрес без пути, например http://192.168.1.10:9290.",
+      "cannot_connect": "Не удаётся открыть «Кухню» по этому адресу.",
+      "invalid_data": "«Кухня» ответила, но без /api/ha: обновите FoodFlow и перезапустите контейнер kitchen."
+    },
+    "abort": {
+      "already_configured": "Этот FoodFlow уже добавлен."
+    }
+  }
+}
