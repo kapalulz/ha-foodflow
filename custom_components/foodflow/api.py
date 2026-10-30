@@ -49,6 +49,10 @@ def validate(data: Any) -> dict[str, Any]:
         require(isinstance(data["thaw"], list) and isinstance(data["use_up"], list))
         for x in data["use_up"]:
             require(isinstance(x["amount"], int | float) and math.isfinite(x["amount"]))
+        for k in data.get("kinds", []):  # newer Kitchen pages: the queue by dish type
+            require(isinstance(k["kind"], str) and isinstance(k["label"], str))
+            require(k["next"] is None or _dish(k["next"]))
+            require(all(_dish(d) for d in k["queue"]))
     except (KeyError, TypeError) as err:
         raise ValueError("Invalid FoodFlow answer") from err
     return data

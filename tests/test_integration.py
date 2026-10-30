@@ -98,5 +98,26 @@ async def test_cards_are_served_and_loaded(hass, hass_client, aioclient_mock, pa
     urls = [u for u in hass.data[DATA_EXTRA_MODULE_URL].urls if "foodflow-cards.js" in u]
     resp = await (await hass_client()).get("/foodflow/foodflow-cards.js")
 
-    assert urls == ["/foodflow/foodflow-cards.js?v=0.1.0"]
+    assert urls == ["/foodflow/foodflow-cards.js?v=0.2.0"]
     assert resp.status == 200 and "foodflow-next-card" in await resp.text()
+
+
+async def test_menu_by_dish_type(hass, aioclient_mock, payload):
+    await setup(hass, aioclient_mock, payload)
+
+    menu = hass.states.get("sensor.foodflow_menu")
+    kinds = menu.attributes["data"]["kinds"]
+
+    assert int(menu.state) == sum(k["count"] for k in payload["kinds"])
+    assert [k["kind"] for k in kinds] == ["main", "soup", "side", "breakfast", "dessert", "bake"]
+    assert kinds[2]["next"]["name"] == "Винегрет"
+
+
+async def test_older_kitchen_page_without_kinds(hass, aioclient_mock, payload):
+    payload.pop("kinds")
+
+    await setup(hass, aioclient_mock, payload)
+
+    menu = hass.states.get("sensor.foodflow_menu")
+    assert menu.state == "unknown" and menu.attributes["data"] == {"kinds": None}
+    assert hass.states.get("sensor.foodflow_next").state == payload["next"]["name"]

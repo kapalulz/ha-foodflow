@@ -31,6 +31,9 @@ SENSORS: tuple[tuple[str, str, str, Callable, Callable, str | None], ...] = (
      lambda d: {"lists": d["shopping"]}, "items"),
     ("fresh", "Thaw and use up", "mdi:snowflake-melt", lambda d: len(d["thaw"]) + len(d["use_up"]),
      lambda d: {"thaw": d["thaw"], "use_up": d["use_up"]}, "items"),
+    ("menu", "Menu by dish type", "mdi:silverware-fork-knife",
+     lambda d: sum(k["count"] for k in d["kinds"]) if "kinds" in d else None,
+     lambda d: {"kinds": d.get("kinds")}, "dishes"),
 )  # fmt: skip
 
 

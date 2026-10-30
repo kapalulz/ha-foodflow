@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-26T09:00:00-04:00",
+  "generated_at": "2026-10-30T09:00:00-04:00",
   "today": "2026-10-26",
   "next": {
     "name": "Курица с рисом",
@@ -57,6 +57,17 @@
       "protein": 38,
       "missing": [],
       "meal": "Обед"
+    },
+    {
+      "name": "Плов",
+      "kind": "main",
+      "kind_label": "Основное блюдо",
+      "servings": 4.0,
+      "minutes": 40,
+      "kcal": 520,
+      "protein": 38,
+      "missing": [],
+      "meal": "Обед"
     }
   ],
   "extras": [
@@ -64,6 +75,17 @@
       "name": "Кекс",
       "kind": "dessert",
       "kind_label": "Десерт",
+      "servings": 4.0,
+      "minutes": 40,
+      "kcal": 520,
+      "protein": 38,
+      "missing": [],
+      "meal": "Обед"
+    },
+    {
+      "name": "Винегрет",
+      "kind": "side",
+      "kind_label": "Салат / гарнир",
       "servings": 4.0,
       "minutes": 40,
       "kcal": 520,
@@ -125,5 +147,214 @@
       ]
     }
   ],
-  "receipt_questions": 1
+  "receipt_questions": 1,
+  "kinds": [
+    {
+      "kind": "main",
+      "icon": "🍲",
+      "label": "Основное",
+      "next": {
+        "name": "Курица с рисом",
+        "kind": "main",
+        "kind_label": "Основное блюдо",
+        "servings": 4.0,
+        "minutes": 40,
+        "kcal": 520,
+        "protein": 38,
+        "missing": [
+          "Рис"
+        ],
+        "meal": "Обед",
+        "ingredients": [
+          {
+            "name": "Курица",
+            "amount": 900.0,
+            "unit": "г",
+            "ok": true
+          },
+          {
+            "name": "Рис",
+            "amount": 300.0,
+            "unit": "г",
+            "ok": false
+          }
+        ],
+        "steps": [
+          "Обжарить 900 г курицы.",
+          "Подавать горячим."
+        ],
+        "planned": true
+      },
+      "queue": [
+        {
+          "name": "Плов",
+          "kind": "main",
+          "kind_label": "Основное блюдо",
+          "servings": 4.0,
+          "minutes": 40,
+          "kcal": 520,
+          "protein": 38,
+          "missing": [],
+          "meal": "Обед"
+        }
+      ],
+      "count": 2
+    },
+    {
+      "kind": "soup",
+      "icon": "🥣",
+      "label": "Суп",
+      "next": {
+        "name": "Борщ",
+        "kind": "soup",
+        "kind_label": "Суп",
+        "servings": 4.0,
+        "minutes": 40,
+        "kcal": 520,
+        "protein": 38,
+        "missing": [],
+        "meal": "Обед",
+        "ingredients": [
+          {
+            "name": "Курица",
+            "amount": 900.0,
+            "unit": "г",
+            "ok": true
+          },
+          {
+            "name": "Рис",
+            "amount": 300.0,
+            "unit": "г",
+            "ok": false
+          }
+        ],
+        "steps": [
+          "Обжарить 900 г курицы.",
+          "Подавать горячим."
+        ],
+        "planned": true
+      },
+      "queue": [],
+      "count": 1
+    },
+    {
+      "kind": "side",
+      "icon": "🥗",
+      "label": "Салат",
+      "next": {
+        "name": "Винегрет",
+        "kind": "side",
+        "kind_label": "Салат / гарнир",
+        "servings": 4.0,
+        "minutes": 40,
+        "kcal": 520,
+        "protein": 38,
+        "missing": [],
+        "meal": "Обед",
+        "ingredients": [
+          {
+            "name": "Курица",
+            "amount": 900.0,
+            "unit": "г",
+            "ok": true
+          },
+          {
+            "name": "Рис",
+            "amount": 300.0,
+            "unit": "г",
+            "ok": false
+          }
+        ],
+        "steps": [
+          "Обжарить 900 г курицы.",
+          "Подавать горячим."
+        ],
+        "planned": true
+      },
+      "queue": [],
+      "count": 1
+    },
+    {
+      "kind": "breakfast",
+      "icon": "🍳",
+      "label": "Завтрак",
+      "next": null,
+      "queue": [],
+      "count": 0
+    },
+    {
+      "kind": "dessert",
+      "icon": "🍰",
+      "label": "Десерт",
+      "next": {
+        "name": "Кекс",
+        "kind": "dessert",
+        "kind_label": "Десерт",
+        "servings": 4.0,
+        "minutes": 40,
+        "kcal": 520,
+        "protein": 38,
+        "missing": [],
+        "meal": "Обед",
+        "ingredients": [
+          {
+            "name": "Курица",
+            "amount": 900.0,
+            "unit": "г",
+            "ok": true
+          },
+          {
+            "name": "Рис",
+            "amount": 300.0,
+            "unit": "г",
+            "ok": false
+          }
+        ],
+        "steps": [
+          "Обжарить 900 г курицы.",
+          "Подавать горячим."
+        ],
+        "planned": true
+      },
+      "queue": [],
+      "count": 1
+    },
+    {
+      "kind": "bake",
+      "icon": "🥖",
+      "label": "Выпечка",
+      "next": {
+        "name": "Хлеб",
+        "kind": "bake",
+        "kind_label": "Выпечка",
+        "servings": 4.0,
+        "minutes": 40,
+        "kcal": 520,
+        "protein": 38,
+        "missing": [],
+        "meal": "Обед",
+        "ingredients": [
+          {
+            "name": "Курица",
+            "amount": 900.0,
+            "unit": "г",
+            "ok": true
+          },
+          {
+            "name": "Рис",
+            "amount": 300.0,
+            "unit": "г",
+            "ok": false
+          }
+        ],
+        "steps": [
+          "Обжарить 900 г курицы.",
+          "Подавать горячим."
+        ],
+        "planned": false
+      },
+      "queue": [],
+      "count": 0
+    }
+  ]
 }

@@ -15,12 +15,13 @@ SENSORS = {
     "queue": {"queue": DATA["queue"], "extras": DATA["extras"]},
     "shopping": {"lists": DATA["shopping"]},
     "fresh": {"thaw": DATA["thaw"], "use_up": DATA["use_up"]},
+    "menu": {"kinds": DATA["kinds"]},
 }
 THEMES = {
     "light": "body{background:#f4f5f6;--primary-text-color:#20242a;--secondary-text-color:#69717d;--primary-color:#346d99;--divider-color:#dce0e5;--secondary-background-color:#eef0f3}ha-card{background:#fff;border-radius:16px}",
     "dark": "body{background:#151b24;--primary-text-color:#e9edf4;--secondary-text-color:#9ca8b8;--primary-color:#63b6a4;--divider-color:#3c4858;--secondary-background-color:#2a3442;--error-color:#f28b82}ha-card{background:#202937;border-radius:16px}",
 }
-CARDS = ["next", "queue", "shopping", "fresh"]
+CARDS = ["next", "queue", "shopping", "fresh", "menu", "dish"]
 current = {}
 
 
@@ -44,11 +45,11 @@ with sync_playwright() as p:
         page.evaluate(
             """([sensors, cards, today]) => {
               window.ha = {language: 'ru', states: {}};
-              for (const key of cards) ha.states['sensor.foodflow_' + key] = {state: '1', attributes: {foodflow_metric: key, today, receipt_questions: 1, data: sensors[key]}};
+              for (const key of Object.keys(sensors)) ha.states['sensor.foodflow_' + key] = {state: '1', attributes: {foodflow_metric: key, today, receipt_questions: 1, data: sensors[key]}};
               window.made = {};
               for (const key of cards) {
                 const card = document.createElement(`foodflow-${key}-card`);
-                card.setConfig({}); card.hass = ha; document.body.append(card); made[key] = card;
+                card.setConfig(key === 'dish' ? {kind: 'side'} : {}); card.hass = ha; document.body.append(card); made[key] = card;
               }
             }""",
             [SENSORS, CARDS, DATA["today"]],
@@ -57,13 +58,42 @@ with sync_playwright() as p:
         for key, needle in (("next", "Курица с рисом"), ("next", "Не хватает: Рис"), ("next", "Обжарить 900 г курицы."),
                             ("queue", "Борщ"), ("queue", "Десерт и завтрак"), ("shopping", "Купить сейчас · 2"),
                             ("shopping", "Соль — кончилось"), ("shopping", "Покупки 30.10"), ("fresh", "Разморозить заранее"),
-                            ("fresh", "Шпинат"), ("fresh", "можно приготовить: Омлет"), ("fresh", "Вопросы по чекам: 1")):  # fmt: skip
+                            ("fresh", "Шпинат"), ("fresh", "можно приготовить: Омлет"), ("fresh", "Вопросы по чекам: 1"),
+                            ("menu", "Основное"), ("menu", "Салат"), ("menu", "Курица с рисом"), ("menu", "Ещё в очереди"),
+                            ("menu", "Плов"), ("dish", "🥗 Салат"), ("dish", "Винегрет")):  # fmt: skip
             assert needle in text(key), (key, needle)
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
             "horizontal scroll"
         )
         page.screenshot(path=f"/tmp/foodflow-cards-{theme}.png", full_page=True)
         assert not errors, errors
+    # the menu: a tap on an icon shows that type; empty type; baking not planned; chosen types
+    page.evaluate(
+        "[...made.menu.shadowRoot.querySelectorAll('.tab')].find(b => b.textContent.includes('Салат')).click()"
+    )
+    assert "Винегрет" in text("menu") and "Курица с рисом" not in text("menu")
+    page.evaluate(
+        "[...made.menu.shadowRoot.querySelectorAll('.tab')].find(b => b.textContent.includes('Завтрак')).click()"
+    )
+    assert "Блюд этого типа в очереди нет" in text("menu")
+    page.evaluate(
+        "[...made.menu.shadowRoot.querySelectorAll('.tab')].find(b => b.textContent.includes('Выпечка')).click()"
+    )
+    assert "Хлеб" in text("menu") and "Не запланировано" in text("menu")
+    page.evaluate(
+        "made.menu.setConfig({kinds: ['dessert', 'side'], show_queue: false}); made.menu.hass = ha"
+    )
+    assert page.evaluate(
+        "made.menu.shadowRoot.querySelectorAll('.tab').length === 2"
+    ) and "Кекс" in text("menu")
+    page.evaluate("made.dish.setConfig({kind: 'soup', show_steps: false}); made.dish.hass = ha")
+    assert (
+        "🥣 Суп" in text("dish") and "Борщ" in text("dish") and "Приготовление" not in text("dish")
+    )
+    page.evaluate(
+        "made.dish.hass = {...ha, states: {...ha.states, 'sensor.foodflow_menu': {state: 'unknown', attributes: {foodflow_metric: 'menu', today: ha.states['sensor.foodflow_menu'].attributes.today, data: {kinds: null}}}}}"
+    )
+    assert "Обновите FoodFlow" in text("dish")
     # blocks off, max, collapsed recipe, empty states, errors, safe title, editor
     page.evaluate(
         "made.next.setConfig({show_steps: false, show_facts: false, open_ingredients: false}); made.next.hass = ha"
@@ -117,11 +147,21 @@ with sync_playwright() as p:
     page.get_by_label("Сколько блюд показывать (пусто — все)", exact=True).fill("3")
     page.get_by_label("Сколько блюд показывать (пусто — все)", exact=True).press("Tab")
     assert page.evaluate("changed.max === 3")
+    page.evaluate("""() => {
+      window.ed2 = customElements.get('foodflow-menu-card').getConfigElement();
+      ed2.hass = ha; ed2.setConfig({type: 'custom:foodflow-menu-card'});
+      ed2.addEventListener('config-changed', e => window.changed2 = e.detail.config);
+      document.body.append(ed2);
+    }""")
+    page.locator("foodflow-card-editor").nth(1).get_by_label("Выпечка", exact=True).uncheck()
     assert page.evaluate(
-        "window.customCards.filter(c => c.type.startsWith('foodflow-')).length === 4"
+        "JSON.stringify(changed2.kinds) === JSON.stringify(['main','soup','side','breakfast','dessert'])"
+    )
+    assert page.evaluate(
+        "window.customCards.filter(c => c.type.startsWith('foodflow-')).length === 6"
     )
     assert not errors, errors
     browser.close()
 print(
-    "FoodFlow cards checks passed: 4 cards, light/dark, phone/desktop, blocks off, max, collapsed recipe, empty, unavailable, ambiguous, safe title, editor."
+    "FoodFlow cards checks passed: 6 cards (menu by dish type, one-type dish), light/dark, phone/desktop, blocks off, max, collapsed recipe, empty, unavailable, ambiguous, safe title, editor."
 )

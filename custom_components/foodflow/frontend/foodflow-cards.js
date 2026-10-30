@@ -1,8 +1,8 @@
-/* FoodFlow cards v0.1.0 — Next dish, Dish queue, Shopping, Thaw & use up. One file, no build step,
+/* FoodFlow cards v0.2.0 — Menu by dish type, Dish (one type), Next dish, Dish queue, Shopping, Thaw & use up. One file, no build step,
    no external dependencies; loaded by the foodflow integration. Read-only: cooking, buying and
    eating are still done on the Kitchen page. All text goes through textContent. Every block can
    be switched off with `show_<block>: false` (visual editor: checkboxes). */
-const FF_VERSION = '0.1.0';
+const FF_VERSION = '0.2.0';
 const FF_TEXT = {
   ru: {
     next: 'Готовим', queue: 'Очередь блюд', shopping: 'Покупки', fresh: 'Разморозить и доесть',
@@ -13,6 +13,9 @@ const FF_TEXT = {
     allFresh: 'Размораживать и доедать нечего', today: 'сегодня', tomorrow: 'завтра', receipts: n => `Вопросы по чекам: ${n} — ответьте на «Кухне»`,
     missingSensor: 'Датчик не найден', multiple: 'Несколько датчиков — выберите Entity в настройках',
     noSensor: 'Нет датчика FoodFlow — добавьте интеграцию FoodFlow', unavailable: 'FoodFlow недоступен',
+    menu: 'Меню', alsoQueued: 'Ещё в очереди', noneOfKind: 'Блюд этого типа в очереди нет',
+    notPlanned: 'Не запланировано — «Испечь» на «Кухне»', oldKitchen: 'Обновите FoodFlow: «Кухня» ещё не отдаёт меню по типам блюд',
+    kindNames: { main: 'Основное', soup: 'Суп', side: 'Салат', breakfast: 'Завтрак', dessert: 'Десерт', bake: 'Выпечка' },
   },
   en: {
     next: 'Cooking next', queue: 'Dish queue', shopping: 'Shopping', fresh: 'Thaw & use up',
@@ -23,6 +26,9 @@ const FF_TEXT = {
     allFresh: 'Nothing to thaw or use up', today: 'today', tomorrow: 'tomorrow', receipts: n => `Receipt questions: ${n} — answer on the Kitchen page`,
     missingSensor: 'Sensor not found', multiple: 'Multiple sensors — select an Entity in settings',
     noSensor: 'No FoodFlow sensor — add the FoodFlow integration', unavailable: 'FoodFlow unavailable',
+    menu: 'Menu', alsoQueued: 'Also queued', noneOfKind: 'No dishes of this type in the queue',
+    notPlanned: 'Not planned — «Испечь» on the Kitchen page', oldKitchen: 'Update FoodFlow: the Kitchen page does not send the menu by dish type yet',
+    kindNames: { main: 'Main', soup: 'Soup', side: 'Salad', breakfast: 'Breakfast', dessert: 'Dessert', bake: 'Baking' },
   },
 };
 const FF_CSS = `
@@ -40,6 +46,7 @@ const FF_CSS = `
   summary:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px;border-radius:4px}
   ul,ol{margin:6px 0;padding-left:20px}li{margin:4px 0;font-size:14px;line-height:1.45}
   li.no{color:var(--error-color,#db4437)}
+  .name{font-size:24px;font-weight:650;letter-spacing:-.4px;line-height:1.2}.kind{margin-bottom:2px}
   @container(max-width:330px){ha-card{padding:14px}h2{font-size:18px}}`;
 
 /** Common part: config, sensor lookup by foodflow_metric, error states, `show_*` switches. */
@@ -97,12 +104,124 @@ class FoodFlowCard extends HTMLElement {
       if (ids.length === 1) [id, state] = [ids[0], states[ids[0]]]; else multiple = ids.length > 1;
     }
     if (!state) { this.el('div', multiple ? t.multiple : id ? `${t.missingSensor}: ${id}` : t.noSensor, 'empty', card); return; }
-    if (['unavailable', 'unknown'].includes(state.state) && this.constructor.metric !== 'next') { this.el('div', t.unavailable, 'empty', card); return; }
-    if (state.state === 'unavailable') { this.el('div', t.unavailable, 'empty', card); return; }
+    // "unknown" with data is fine (an empty queue; the menu from an older Kitchen page says so itself)
+    if (state.state === 'unavailable' || (state.state === 'unknown' && state.attributes.data == null && this.constructor.metric !== 'next')) {
+      this.el('div', t.unavailable, 'empty', card); return;
+    }
     this._today = state.attributes.today;
     this.body(card, state.attributes.data, t, state);
   }
   css() { return ''; }
+}
+
+const FF_DISH_BLOCKS = [['kind', 'Тип блюда', 'Dish type'], ['facts', 'Порции, время, ккал, белок', 'Servings, time, kcal, protein'],
+  ['missing', 'Чего не хватает', 'Missing products'], ['ingredients', 'Ингредиенты', 'Ingredients'], ['steps', 'Приготовление', 'Steps']];
+const FF_KINDS = ['main', 'soup', 'side', 'breakfast', 'dessert', 'bake'];
+
+/** One dish with its recipe, shared by the Next dish, Dish and Menu cards (`card` gives show() and config). */
+function ffDish(card, parent, d, t) {
+  if (card.show('kind')) card.el('div', d.kind_label, 'muted kind', parent);
+  card.el('div', d.name, 'name', parent);
+  if (d.planned === false) card.el('div', t.notPlanned, 'muted', parent);
+  if (card.show('facts')) {
+    const chips = card.el('div', null, 'chips', parent);
+    for (const [v, f] of [[d.servings, t.servings], [d.minutes, t.minutes], [d.kcal, t.kcal], [d.protein, t.protein]])
+      if (v) card.el('span', f(card.num.format(v)), 'chip', chips);
+  }
+  if (card.show('missing') && d.missing?.length) card.el('div', `${t.missing}: ${d.missing.join(', ')}`, 'alert', parent);
+  if (card.show('ingredients') && d.ingredients?.length) {
+    const box = card.el('details', null, null, parent); box.open = card._config.open_ingredients !== false;
+    card.el('summary', t.ingredients, null, box);
+    const ul = card.el('ul', null, null, box);
+    for (const i of d.ingredients) card.el('li', [i.name, card.amount(i)].filter(Boolean).join(' — '), i.ok ? '' : 'no', ul);
+  }
+  if (card.show('steps') && d.steps?.length) {
+    const box = card.el('details', null, null, parent); box.open = card._config.open_steps === true;
+    card.el('summary', t.steps, null, box);
+    const ol = card.el('ol', null, null, box);
+    for (const s of d.steps) card.el('li', s, null, ol);
+  }
+}
+
+/** The rest of one type's queue. */
+function ffQueue(card, parent, dishes, t) {
+  if (!dishes?.length) return;
+  card.el('h3', t.alsoQueued, null, parent);
+  for (const d of dishes) {
+    const row = card.el('div', null, 'row', parent);
+    const left = card.el('span', d.name, null, row);
+    if (d.missing?.length) { left.classList.add('warn'); left.title = `${t.missing}: ${d.missing.join(', ')}`; }
+    card.el('span', [d.servings && t.servings(card.num.format(d.servings)), d.minutes && t.minutes(d.minutes)].filter(Boolean).join(' · '), 'muted', row);
+  }
+}
+
+/* 0a. Menu by dish type: the six icons of the Kitchen page; a tap shows that type's next dish and its queue. */
+class FoodFlowMenuCard extends FoodFlowCard {
+  static metric = 'menu';
+  static blocks = [['title', 'Заголовок', 'Title'], ['counts', 'Число блюд у иконок', 'Counts on the icons'], ...FF_DISH_BLOCKS,
+    ['queue', 'Ещё в очереди этого типа', 'The rest of this type\'s queue']];
+  check(config) {
+    if (config.kinds != null && (!Array.isArray(config.kinds) || config.kinds.some(k => !FF_KINDS.includes(k)))) throw new Error(`kinds: a list of ${FF_KINDS.join(', ')}`);
+    if (config.default_kind != null && !FF_KINDS.includes(config.default_kind)) throw new Error(`default_kind: one of ${FF_KINDS.join(', ')}`);
+  }
+  getCardSize() { return 7; }
+  getGridOptions() { return { columns: 12, min_columns: 6, rows: 7, min_rows: 3 }; }
+  css() { return `.tabs{display:grid;gap:6px;margin-bottom:12px}
+    .tab{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:8px 2px;overflow:hidden;border-radius:12px;border:1px solid var(--divider-color,#ddd);background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}
+    .tab .ic{font-size:22px;line-height:1}.tab[aria-selected=true]{border-color:var(--primary-color,#03a9f4);background:color-mix(in srgb,var(--primary-color,#03a9f4) 14%,transparent)}
+    .tab.none{opacity:.55}.tab .n{font-size:11px;color:var(--secondary-text-color)}
+    .tab:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+    .tab span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    @container(max-width:380px){.tab{font-size:10px;padding:6px 1px}.tab .ic{font-size:20px}}`; }
+  body(card, data, t) {
+    const all = data?.kinds;
+    if (!all) { this.el('div', t.oldKitchen, 'empty', card); return; }
+    const order = this._config.kinds?.length ? this._config.kinds : FF_KINDS;
+    const kinds = order.map(k => all.find(x => x.kind === k)).filter(Boolean);
+    if (!kinds.find(k => k.kind === this._sel)) {
+      const want = this._config.default_kind;
+      this._sel = (kinds.find(k => k.kind === want) || kinds.find(k => k.next) || kinds[0])?.kind;
+    }
+    const tabs = this.el('div', null, 'tabs', card); tabs.setAttribute('role', 'tablist');
+    tabs.style.gridTemplateColumns = `repeat(${kinds.length},minmax(0,1fr))`;  // all icons in one row, equal width
+    for (const k of kinds) {
+      const b = this.el('button', null, `tab${k.next ? '' : ' none'}`, tabs); b.type = 'button'; b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(k.kind === this._sel)); b.title = t.kindNames[k.kind] || k.label;
+      this.el('span', k.icon, 'ic', b); this.el('span', t.kindNames[k.kind] || k.label, null, b);
+      if (this.show('counts')) this.el('span', String(k.count), 'n', b);
+      b.addEventListener('click', () => { this._sel = k.kind; this.render(); this.shadowRoot.querySelector('.tab[aria-selected=true]')?.focus(); });
+    }
+    const k = kinds.find(x => x.kind === this._sel);
+    if (!k?.next) { this.el('div', t.noneOfKind, 'empty', card); return; }
+    ffDish(this, card, k.next, t);
+    if (this.show('queue')) ffQueue(this, card, k.queue, t);
+  }
+}
+
+/* 0b. Dish: one type only (kind: main | soup | side | breakfast | dessert | bake) — one card per category. */
+class FoodFlowDishCard extends FoodFlowCard {
+  static metric = 'menu';
+  static blocks = [['title', 'Заголовок', 'Title'], ...FF_DISH_BLOCKS, ['queue', 'Ещё в очереди этого типа', 'The rest of this type\'s queue']];
+  check(config) { if (config.kind != null && !FF_KINDS.includes(config.kind)) throw new Error(`kind: one of ${FF_KINDS.join(', ')}`); }
+  static getStubConfig() { return { kind: 'main' }; }
+  getCardSize() { return 5; }
+  getGridOptions() { return { columns: 6, min_columns: 4, rows: 5, min_rows: 2 }; }
+  render() {  // the title is the type: «🥗 Салат»
+    super.render();
+    const h = this.shadowRoot.querySelector('h2');
+    if (h && !this._config.title) {
+      const k = (this._config.kind || 'main'), icons = { main: '🍲', soup: '🥣', side: '🥗', breakfast: '🍳', dessert: '🍰', bake: '🥖' };
+      h.textContent = `${icons[k]} ${this.t.kindNames[k]}`;
+    }
+  }
+  body(card, data, t) {
+    const all = data?.kinds;
+    if (!all) { this.el('div', t.oldKitchen, 'empty', card); return; }
+    const k = all.find(x => x.kind === (this._config.kind || 'main'));
+    if (!k?.next) { this.el('div', t.noneOfKind, 'empty', card); return; }
+    ffDish(this, card, k.next, t);
+    if (this.show('queue')) ffQueue(this, card, k.queue, t);
+  }
 }
 
 /* 1. Next dish: what to cook, how long, what is missing, ingredients and steps. */
@@ -113,29 +232,9 @@ class FoodFlowNextCard extends FoodFlowCard {
     ['ingredients', 'Ингредиенты', 'Ingredients'], ['steps', 'Приготовление', 'Steps']];
   getCardSize() { return 6; }
   getGridOptions() { return { columns: 12, min_columns: 6, rows: 6, min_rows: 2 }; }
-  css() { return `.name{font-size:24px;font-weight:650;letter-spacing:-.4px;line-height:1.2}.kind{margin-bottom:2px}`; }
   body(card, d, t) {
     if (!d) { this.el('div', t.nothingNext, 'empty', card); return; }
-    if (this.show('kind')) this.el('div', d.kind_label, 'muted kind', card);
-    this.el('div', d.name, 'name', card);
-    if (this.show('facts')) {
-      const chips = this.el('div', null, 'chips', card);
-      for (const [v, f] of [[d.servings, t.servings], [d.minutes, t.minutes], [d.kcal, t.kcal], [d.protein, t.protein]])
-        if (v) this.el('span', f(this.num.format(v)), 'chip', chips);
-    }
-    if (this.show('missing') && d.missing?.length) this.el('div', `${t.missing}: ${d.missing.join(', ')}`, 'alert', card);
-    if (this.show('ingredients') && d.ingredients?.length) {
-      const box = this.el('details', null, null, card); box.open = this._config.open_ingredients !== false;
-      this.el('summary', t.ingredients, null, box);
-      const ul = this.el('ul', null, null, box);
-      for (const i of d.ingredients) this.el('li', [i.name, this.amount(i)].filter(Boolean).join(' — '), i.ok ? '' : 'no', ul);
-    }
-    if (this.show('steps') && d.steps?.length) {
-      const box = this.el('details', null, null, card); box.open = this._config.open_steps === true;
-      this.el('summary', t.steps, null, box);
-      const ol = this.el('ol', null, null, box);
-      for (const s of d.steps) this.el('li', s, null, ol);
-    }
+    ffDish(this, card, d, t);
   }
 }
 
@@ -256,7 +355,27 @@ class FoodFlowCardEditor extends HTMLElement {
     field('title', L('Заголовок (необязательно)', 'Title (optional)'));
     select('language', L('Язык', 'Language'), [['', L('Как в Home Assistant', 'Home Assistant language')], ['ru', 'Русский'], ['en', 'English']]);
     const metric = this.card.metric;
-    if (metric === 'next') {
+    if (this.card === FoodFlowDishCard) {
+      select('kind', L('Тип блюда', 'Dish type'), FF_KINDS.map(k => [k === 'main' ? '' : k, FF_TEXT[ru ? 'ru' : 'en'].kindNames[k]]));
+    }
+    if (this.card === FoodFlowMenuCard) {
+      select('default_kind', L('Открыт сначала', 'Opened first'), [['', L('Первый с блюдом', 'The first one with a dish')],
+        ...FF_KINDS.map(k => [k, FF_TEXT[ru ? 'ru' : 'en'].kindNames[k]])]);
+      const chosen = this._config.kinds?.length ? this._config.kinds : FF_KINDS;
+      const box = document.createElement('fieldset'); const lg = document.createElement('legend'); lg.textContent = L('Типы блюд', 'Dish types'); box.append(lg);
+      for (const k of FF_KINDS) {
+        const label = document.createElement('label'); label.className = 'check';
+        const input = document.createElement('input'); input.type = 'checkbox'; input.checked = chosen.includes(k);
+        const name = FF_TEXT[ru ? 'ru' : 'en'].kindNames[k]; input.setAttribute('aria-label', name);
+        input.addEventListener('change', () => {
+          const next = FF_KINDS.filter(x => (x === k ? input.checked : chosen.includes(x)));
+          this.set('kinds', next.length === FF_KINDS.length || !next.length ? undefined : next); this.render();
+        });
+        label.append(input, document.createTextNode(name)); box.append(label);
+      }
+      root.append(box);
+    }
+    if (['next', 'menu'].includes(metric)) {
       select('open_ingredients', L('Ингредиенты', 'Ingredients'), [['', L('Раскрыты', 'Expanded')], ['false', L('Свёрнуты', 'Collapsed')]], v => v === 'true');
       select('open_steps', L('Приготовление', 'Steps'), [['', L('Свёрнуто', 'Collapsed')], ['true', L('Раскрыто', 'Expanded')]], v => v === 'true');
     }
@@ -276,6 +395,8 @@ class FoodFlowCardEditor extends HTMLElement {
 if (!customElements.get('foodflow-card-editor')) customElements.define('foodflow-card-editor', FoodFlowCardEditor);
 window.customCards = window.customCards || [];
 for (const [tag, cls, name, description] of [
+  ['foodflow-menu-card', FoodFlowMenuCard, 'FoodFlow — Menu', 'Меню по типам блюд: основное, суп, салат, завтрак, десерт, выпечка'],
+  ['foodflow-dish-card', FoodFlowDishCard, 'FoodFlow — Dish', 'Одно блюдо выбранного типа: салат, десерт и т. д.'],
   ['foodflow-next-card', FoodFlowNextCard, 'FoodFlow — Next dish', 'Что готовим: блюдо, чего не хватает, рецепт'],
   ['foodflow-queue-card', FoodFlowQueueCard, 'FoodFlow — Dish queue', 'Очередь блюд, десерт и завтрак'],
   ['foodflow-shopping-card', FoodFlowShoppingCard, 'FoodFlow — Shopping', 'Списки покупок (только просмотр)'],
